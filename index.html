@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>成型盒厚度計算器</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --surface: #ffffff;
+      --surface2: #f7f8fa;
+      --border: #e2e5ea;
+      --primary: #1a56db;
+      --primary-light: #e8effe;
+      --primary-dark: #1341b0;
+      --accent: #0ea5e9;
+      --success: #059669;
+      --success-light: #d1fae5;
+      --warning: #d97706;
+      --warning-light: #fef3c7;
+      --text: #1a1f2e;
+      --text2: #5a6478;
+      --text3: #9ca3af;
+      --radius: 14px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.06);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'Noto Sans TC', 'PingFang TC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 0 0 env(safe-area-inset-bottom);
+    }
+
+    /* ── Header ── */
+    .app-header {
+      background: var(--primary);
+      color: white;
+      padding: 20px 20px 16px;
+      text-align: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(26,86,219,0.3);
+    }
+    .app-header h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .app-header p {
+      font-size: 0.78rem;
+      opacity: 0.8;
+      margin-top: 2px;
+    }
+
+    /* ── Tab Nav ── */
+    .tab-nav {
+      display: flex;
+      background: var(--primary-dark);
+      overflow-x: auto;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .tab-nav::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      flex: 1;
+      min-width: 90px;
+      padding: 11px 12px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      font-family: inherit;
+      color: rgba(255,255,255,0.65);
+      background: none;
+      border: none;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .tab-btn.active {
+      color: #fff;
+      border-bottom-color: #7dd3fc;
+      background: rgba(255,255,255,0.08);
+    }
+
+    /* ── Content ── */
+    .content {
+      padding: 16px;
+      max-width: 560px;
+      margin: 0 auto;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 20px;
+      margin-bottom: 14px;
+    }
+    .card-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text2);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card-title::before {
+      content: '';
+      width: 3px;
+      height: 14px;
+      background: var(--primary);
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    /* ── Form Fields ── */
+    .field {
+      margin-bottom: 14px;
+    }
+    .field:last-child { margin-bottom: 0; }
+    .field label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text2);
+      margin-bottom: 5px;
+    }
+    .field input, .field select {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 1rem;
+      font-family: inherit;
+      color: var(--text);
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    .field input:focus, .field select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(26,86,219,0.12);
+      background: #fff;
+    }
+    .field .unit {
+      font-size: 0.78rem;
+      color: var(--text3);
+      margin-top: 3px;
+    }
+    .select-wrap {
+      position: relative;
+    }
+    .select-wrap::after {
+      content: '▾';
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text3);
+      pointer-events: none;
+      font-size: 0.9rem;
+    }
+    .select-wrap select { padding-right: 36px; }
+
+    /* ── Two col ── */
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* ── Button ── */
+    .calc-btn {
+      width: 100%;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: inherit;
+      color: white;
+      background: var(--primary);
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.18s, transform 0.1s;
+      letter-spacing: 0.03em;
+      margin-top: 4px;
+    }
+    .calc-btn:hover { background: var(--primary-dark); }
+    .calc-btn:active { transform: scale(0.98); }
+
+    /* ── Result Card ── */
+    .result-card {
+      background: var(--primary-light);
+      border-radius: var(--radius);
+      padding: 18px;
+      margin-top: 14px;
+      border: 1.5px solid rgba(26,86,219,0.15);
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+    .result-card.show { display: block; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .result-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--primary);
+      margin-bottom: 12px;
+    }
+    .result-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(26,86,219,0.08);
+      gap: 8px;
+    }
+    .result-row:last-child { border-bottom: none; padding-bottom: 0; }
+    .result-label {
+      font-size: 0.85rem;
+      color: var(--text2);
+      flex-shrink: 0;
+    }
+    .result-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 1.05rem;
+      font-weight: 500;
+      color: var(--text);
+      text-align: right;
+    }
+    .result-value.highlight {
+      color: var(--primary);
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+    .badge-success { background: var(--success-light); color: var(--success); }
+    .badge-warning { background: var(--warning-light); color: var(--warning); }
+
+    /* ── Formula Card ── */
+    .formula-block {
+      background: #eff6ff;
+      border-left: 3px solid var(--accent);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .formula-block h3 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .formula-eq {
+      font-family: 'DM Mono', monospace;
+      font-size: 0.9rem;
+      color: var(--text);
+      background: rgba(255,255,255,0.7);
+      padding: 8px 10px;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .info-block {
+      background: var(--warning-light);
+      border-left: 3px solid var(--warning);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .info-block h3 {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--warning);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .info-block p { font-size: 0.85rem; color: var(--text2); line-height: 1.7; }
+
+    /* ── Verify badge ── */
+    .verify-tag {
+      background: var(--success-light);
+      border: 1.5px solid #a7f3d0;
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      font-size: 0.84rem;
+      color: var(--success);
+      line-height: 1.7;
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-header">
+  <h1>📦 成型盒厚度計算器</h1>
+  <p>響應式行動版 · 厚度 / 減重 / 驗證</p>
+</div>
+
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="switchTab('t1',this)">厚度計算</button>
+  <button class="tab-btn" onclick="switchTab('t2',this)">減重計算</button>
+  <button class="tab-btn" onclick="switchTab('t3',this)">驗證條件</button>
+  <button class="tab-btn" onclick="switchTab('t4',this)">公式說明</button>
+</div>
+
+<div class="content">
+
+  <!-- ══ TAB 1: 厚度計算 ══ -->
+  <div id="t1" class="tab-panel active">
+    <div class="card">
+      <div class="card-title">材質與基本參數</div>
+      <div class="field">
+        <label>材質選擇</label>
+        <div class="select-wrap">
+          <select id="mat1" onchange="syncDensity('d1',this)">
+            <option value="1.38">PET 材質（1.38 g/cm³）</option>
+            <option value="0.91">PP 材質（0.91 g/cm³）</option>
+            <option value="custom">自訂密度</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>材料密度</label>
+        <input type="number" id="d1" value="1.38" step="0.01">
+        <span class="unit">單位：g/cm³</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">新款成型盒資料</div>
+      <div class="field-row">
+        <div class="field">
+          <label>重量</label>
+          <input type="number" id="nw1" value="18.27" step="0.01">
+          <span class="unit">g</span>
+        </div>
+        <div class="field">
+          <label>厚度</label>
+          <input type="number" id="nt1" value="0.28" step="0.001">
+          <span class="unit">mm</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">舊款成型盒資料</div>
+      <div class="field">
+        <label>舊款重量</label>
+        <input type="number" id="ow1" value="21.38" step="0.01">
+        <span class="unit">g</span>
+      </div>
+      <button class="calc-btn" onclick="calcThickness()">計算舊款厚度</button>
+    </div>
+
+    <div id="res1" class="result-card">
+      <div class="result-title">📊 計算結果</div>
+      <div class="result-row">
+        <span class="result-label">新款展開面積</span>
+        <span class="result-value" id="r1_area">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">舊款估計厚度</span>
+        <span class="result-value highlight" id="r1_thick">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 2: 減重計算 ══ -->
+  <div id="t2" class="tab-panel">
+    <div class="card">
+      <div class="card-title">材質與基本參數</div>
+      <div class="field">
+        <label>材質選擇</label>
+        <div class="select-wrap">
+          <select id="mat2" onchange="syncDensity('d2',this)">
+            <option value="1.38">PET 材質（1.38 g/cm³）</option>
+            <option value="0.91">PP 材質（0.91 g/cm³）</option>
+            <option value="custom">自訂密度</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>材料密度</label>
+        <input type="number" id="d2" value="1.38" step="0.01">
+        <span class="unit">單位：g/cm³</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">展開面積與厚度差</div>
+      <div class="field">
+        <label>成型盒展開面積</label>
+        <input type="number" id="area2" value="473.10" step="0.01">
+        <span class="unit">cm²</span>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>舊款厚度</label>
+          <input type="number" id="ot2" value="0.328" step="0.001">
+          <span class="unit">mm</span>
+        </div>
+        <div class="field">
+          <label>新款厚度</label>
+          <input type="number" id="nt2" value="0.28" step="0.001">
+          <span class="unit">mm</span>
+        </div>
+      </div>
+      <button class="calc-btn" onclick="calcReduction()">計算減重量</button>
+    </div>
+
+    <div id="res2" class="result-card">
+      <div class="result-title">📊 計算結果</div>
+      <div class="result-row">
+        <span class="result-label">舊款重量</span>
+        <span class="result-value" id="r2_old">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">新款重量</span>
+        <span class="result-value" id="r2_new">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">減重量</span>
+        <span class="result-value highlight" id="r2_diff">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">減重比例</span>
+        <span class="result-value highlight" id="r2_pct">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 3: 驗證條件 ══ -->
+  <div id="t3" class="tab-panel">
+    <div class="verify-tag">
+      ✅ 待驗證：舊款約用 <strong>0.328mm PET</strong>，新款 0.28mm 設計節省約 <strong>3.11g</strong>
+    </div>
+
+    <div class="card">
+      <div class="card-title">材質與密度</div>
+      <div class="field">
+        <label>材質選擇</label>
+        <div class="select-wrap">
+          <select id="mat3" onchange="syncDensity('d3',this)">
+            <option value="1.38">PET 材質（1.38 g/cm³）</option>
+            <option value="0.91">PP 材質（0.91 g/cm³）</option>
+            <option value="custom">自訂密度</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>材料密度</label>
+        <input type="number" id="d3" value="1.38" step="0.01">
+        <span class="unit">g/cm³</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">厚度與減重資料</div>
+      <div class="field-row">
+        <div class="field">
+          <label>舊款厚度</label>
+          <input type="number" id="ot3" value="0.328" step="0.001">
+          <span class="unit">mm</span>
+        </div>
+        <div class="field">
+          <label>新款厚度</label>
+          <input type="number" id="nt3" value="0.28" step="0.001">
+          <span class="unit">mm</span>
+        </div>
+      </div>
+      <div class="field">
+        <label>實際減重量</label>
+        <input type="number" id="wr3" value="3.11" step="0.01">
+        <span class="unit">g</span>
+      </div>
+      <button class="calc-btn" onclick="calcVerify()">驗證條件</button>
+    </div>
+
+    <div id="res3" class="result-card">
+      <div class="result-title">📊 驗證結果</div>
+      <div class="result-row">
+        <span class="result-label">推算展開面積</span>
+        <span class="result-value" id="r3_area">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">舊款理論重量</span>
+        <span class="result-value" id="r3_old">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">新款理論重量</span>
+        <span class="result-value" id="r3_new">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">理論減重量</span>
+        <span class="result-value" id="r3_diff">—</span>
+      </div>
+      <div class="result-row">
+        <span class="result-label">條件符合度</span>
+        <span class="result-value" id="r3_match">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ TAB 4: 公式說明 ══ -->
+  <div id="t4" class="tab-panel">
+    <div class="card">
+      <div class="card-title">計算公式</div>
+
+      <div class="formula-block">
+        <h3>① 計算展開面積</h3>
+        <div class="formula-eq">面積 = 重量 ÷ （厚度 × 密度）</div>
+      </div>
+      <div class="formula-block">
+        <h3>② 計算成型盒厚度</h3>
+        <div class="formula-eq">厚度 = 重量 ÷ （面積 × 密度）</div>
+      </div>
+      <div class="formula-block">
+        <h3>③ 計算成型盒重量</h3>
+        <div class="formula-eq">重量 = 面積 × 厚度 × 密度</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">材料密度參考</div>
+      <div class="info-block">
+        <h3>材料</h3>
+        <p>
+          PET 材質：1.38 g/cm³（範圍 1.35～1.40）<br>
+          PP 材質：0.91 g/cm³（範圍 0.90～0.92）
+        </p>
+      </div>
+      <div class="info-block" style="margin-bottom:0">
+        <h3>單位說明</h3>
+        <p>
+          重量：克（g）<br>
+          厚度：毫米（mm）→ 計算時自動換算為 cm<br>
+          面積：平方厘米（cm²）<br>
+          密度：g/cm³
+        </p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<script>
+  function switchTab(id, btn) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  function syncDensity(densityId, sel) {
+    const val = sel.value;
+    if (val !== 'custom') document.getElementById(densityId).value = val;
+  }
+
+  function fmt(n, d=2) { return isNaN(n) ? '—' : n.toFixed(d); }
+
+  function calcThickness() {
+    const dens = +document.getElementById('d1').value;
+    const nw   = +document.getElementById('nw1').value;
+    const nt   = +document.getElementById('nt1').value / 10;
+    const ow   = +document.getElementById('ow1').value;
+    const area = nw / (nt * dens);
+    const thick = (ow / (area * dens)) * 10;
+    document.getElementById('r1_area').textContent  = fmt(area,2) + ' cm²';
+    document.getElementById('r1_thick').textContent = fmt(thick,3) + ' mm';
+    document.getElementById('res1').classList.add('show');
+  }
+
+  function calcReduction() {
+    const dens = +document.getElementById('d2').value;
+    const area = +document.getElementById('area2').value;
+    const ot   = +document.getElementById('ot2').value / 10;
+    const nt   = +document.getElementById('nt2').value / 10;
+    const ow   = area * ot * dens;
+    const nw   = area * nt * dens;
+    const diff = ow - nw;
+    const pct  = (diff / ow) * 100;
+    document.getElementById('r2_old').textContent  = fmt(ow) + ' g';
+    document.getElementById('r2_new').textContent  = fmt(nw) + ' g';
+    document.getElementById('r2_diff').textContent = fmt(diff) + ' g';
+    document.getElementById('r2_pct').textContent  = fmt(pct,1) + ' %';
+    document.getElementById('res2').classList.add('show');
+  }
+
+  function calcVerify() {
+    const dens = +document.getElementById('d3').value;
+    const ot   = +document.getElementById('ot3').value / 10;
+    const nt   = +document.getElementById('nt3').value / 10;
+    const wr   = +document.getElementById('wr3').value;
+    const area = wr / (dens * (ot - nt));
+    const ow   = area * ot * dens;
+    const nw   = area * nt * dens;
+    const diff = ow - nw;
+    const acc  = 100 - Math.abs(diff - wr) / wr * 100;
+    let badge;
+    if (acc > 99.5)     badge = `<span class="badge badge-success">完全符合 100%</span>`;
+    else if (acc > 95)  badge = `<span class="badge badge-success">高度符合 ${fmt(acc,1)}%</span>`;
+    else if (acc > 90)  badge = `<span class="badge badge-warning">大致符合 ${fmt(acc,1)}%</span>`;
+    else                badge = `<span class="badge badge-warning">不太符合 ${fmt(acc,1)}%</span>`;
+    document.getElementById('r3_area').textContent  = fmt(area) + ' cm²';
+    document.getElementById('r3_old').textContent   = fmt(ow) + ' g';
+    document.getElementById('r3_new').textContent   = fmt(nw) + ' g';
+    document.getElementById('r3_diff').textContent  = fmt(diff) + ' g';
+    document.getElementById('r3_match').innerHTML   = badge;
+    document.getElementById('res3').classList.add('show');
+  }
+
+  // Auto run verify on load
+  window.onload = () => calcVerify();
+</script>
+</body>
+</html>
